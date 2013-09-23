@@ -11,12 +11,13 @@
 class Graph_sweeps(object) :
   """Solve the SOP create by the sweeps on parallel."""
 
-  def __init__(self,tasks,method) :
+  def __init__(self,tasks,method,n_processors) :
 
     super(Graph_sweeps,self).__init__()
     self.tasks = tasks
     self.graph = []
     self.method = method
+    self.n_processors = n_processors
 
 #----------------------------------------------------------------------------#
 
@@ -40,6 +41,78 @@ class Graph_sweeps(object) :
 
 #----------------------------------------------------------------------------#
 
+  def use_mpw(self) :
+    """Use MPW (most processors waiting) method to determine the next task."""
+
+    used_procs = set()
+# Execute the task with the most task waiting for it.
+    pos = 0
+    counter = 0
+    for task in self.tasks_ready :
+      if task.n_total_waiting_processors>self.tasks_ready[pos].n_total_waiting_processors :
+        pos = counter
+      counter += 1  
+    used_procs.add(self.tasks_ready[pos].subdomain_id)
+    self.tasks_done.add(self.tasks_ready[pos])
+    current_level = [self.tasks_ready.pop(pos)]
+# Add one task per other processor. Because they can be executed at the same
+# time than the first task, the cost is zero.
+    for i in xrange(self.n_processors-1) :
+      pos = -1
+      counter = 0
+      for task in self.tasks_ready :
+        if task.subdomain_id not in used_procs :
+          if pos==-1 :
+            pos = counter
+          elif task.n_total_waiting_processors>self.tasks_ready[pos].n_total_waiting_processors :
+            pos = counter
+        counter += 1
+      
+      if pos!=-1 :
+        self.tasks_done.add(self.tasks_ready[pos])
+        used_procs.add(self.tasks_ready[pos].subdomain_id)
+        current_level.append(self.tasks_ready.pop(pos))
+
+    return current_level
+
+#----------------------------------------------------------------------------#
+
+  def use_mtw(self) :
+    """Use MTW (most tasks waiting) method to determine the next task."""
+
+    used_procs = set()
+# Execute the task with the most task waiting for it.
+    pos = 0
+    counter = 0
+    for task in self.tasks_ready :
+      if task.n_total_waiting_tasks>self.tasks_ready[pos].n_total_waiting_tasks :
+        pos = counter
+      counter += 1  
+    used_procs.add(self.tasks_ready[pos].subdomain_id)
+    self.tasks_done.add(self.tasks_ready[pos])
+    current_level = [self.tasks_ready.pop(pos)]
+# Add one task per other processor. Because they can be executed at the same
+# time than the first task, the cost is zero.
+    for i in xrange(self.n_processors-1) :
+      pos = -1
+      counter = 0
+      for task in self.tasks_ready :
+        if task.subdomain_id not in used_procs :
+          if pos==-1 :
+            pos = counter
+          elif task.n_total_waiting_tasks>self.tasks_ready[pos].n_total_waiting_tasks :
+            pos = counter
+        counter += 1
+      
+      if pos!=-1 :
+        self.tasks_done.add(self.tasks_ready[pos])
+        used_procs.add(self.tasks_ready[pos].subdomain_id)
+        current_level.append(self.tasks_ready.pop(pos))
+
+    return current_level
+
+#----------------------------------------------------------------------------#
+
   def solve(self) :
     """Solve the SOP"""
 
@@ -49,7 +122,7 @@ class Graph_sweeps(object) :
 # to be executed. At first, these tasks are the one that do not require
 # another task.
     self.tasks_ready = []
-    for task in self.tasks:
+    for task in self.tasks :
       if task.n_required_tasks==0 :
         self.tasks_ready.append(task)
 
@@ -59,12 +132,17 @@ class Graph_sweeps(object) :
     while len(self.tasks_done)!=len(self.tasks) :
       if self.method=='FIFO' :
         current_level = self.use_fifo()
+      elif self.method=='MPW' :
+        current_level = self.use_mpw()
+      elif self.method=='MTW' :
+        current_level = self.use_mtw()
+      else :
+        raise NotImplementedError
       self.graph.append(current_level)
 # Add new tasks to the tasks_ready list.
       for task in self.tasks :
         if task not in self.tasks_done :
           ready = True
-          counter = 0
           for required_task in task.required_tasks :
             if required_task not in self.tasks_done :
               ready = False
