@@ -53,7 +53,7 @@ file_names = ['0.txt','1.txt','2.txt']
 #   Michael's bound ou, plus simple, plus grand nombres de cells sur un
 #   processeur. Max bound: nombre de cells restantes.
 methods = ['FIFO','MTW','MPW','DFDS']
-method = methods[3]
+method = methods[0]
 
 # Read the input files
 tasks = []

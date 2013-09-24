@@ -35,7 +35,8 @@ class Graph_sweeps(object) :
       if task.subdomain_id not in used_procs :
         self.tasks_done.add(task)
         used_procs.add(task.subdomain_id)
-        current_level.append(self.tasks_ready.pop(self.tasks_ready.index(task)))
+        current_level.append(task)
+        self.tasks_ready.remove(task)
 
     return current_level
 
