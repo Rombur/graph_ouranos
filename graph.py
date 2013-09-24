@@ -12,7 +12,7 @@ problem (SOP)."""
 import Graph_sweeps
 import Task
 
-def compute_downstream_tasks(tasks,n_dir) :
+def compute_downstream_tasks(tasks,n_dir,max_b_level=None) :
   """Compute the number of tasks and of processors downstream the task."""
   
 # To compute the number of tasks downstream, we need to sweep the mesh in the
@@ -25,7 +25,10 @@ def compute_downstream_tasks(tasks,n_dir) :
     
     tasks_done = set()
     while len(tasks_ready)!=0 :
-      tasks_ready[0].set_downstream_values(tasks)
+      if max_b_level==None :
+        tasks_ready[0].set_downstream_values(tasks)
+      else :
+        tasks_ready[0].set_dfds_level(tasks,max_b_level)
       tasks_done.add(tasks_ready[0])
       tasks_ready.pop(0)
       for task in tasks :
@@ -45,12 +48,12 @@ file_names = ['0.txt','1.txt','2.txt']
 #   - FIFO: first-in first-out
 #   - MTW: most tasks waiting
 #   - MPW: most processors waiting
-#   - Rajouter les heuristiques de Pautz
+#   - DFDS: depth-first descendant-seeking
 #   - Rajouter branch-and-bound: besoin de 2 bounds. Min bound: utiliser
 #   Michael's bound ou, plus simple, plus grand nombres de cells sur un
 #   processeur. Max bound: nombre de cells restantes.
-methods = ['FIFO','MTW','MPW']
-method = methods[2]
+methods = ['FIFO','MTW','MPW','DFDS']
+method = methods[3]
 
 # Read the input files
 tasks = []
@@ -93,6 +96,13 @@ for task in tasks :
 
 if method!='FIFO' :
   compute_downstream_tasks(tasks,n_dir)
+
+if method=='DFDS' :
+  max_b_level = 0
+  for task in tasks :
+    if max_b_level<task.b_level :
+      max_b_level = task.b_level
+  compute_downstream_tasks(tasks,n_dir,max_b_level)
 
 graph_sweeps = Graph_sweeps.Graph_sweeps(tasks,method,len(file_names))
 graph_sweeps.solve()

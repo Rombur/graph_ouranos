@@ -113,6 +113,42 @@ class Graph_sweeps(object) :
 
 #----------------------------------------------------------------------------#
 
+  def use_dfds(self) :
+    """Use DFDS (depth-first descendant-seeking) method to determine the next task."""
+
+    used_procs = set()
+# Execute the task with the highest dfds_level.
+    pos = 0
+    counter = 0
+    for task in self.tasks_ready :
+      if task.dfds_level>self.tasks_ready[pos].dfds_level :
+        pos = counter
+      counter += 1  
+    used_procs.add(self.tasks_ready[pos].subdomain_id)
+    self.tasks_done.add(self.tasks_ready[pos])
+    current_level = [self.tasks_ready.pop(pos)]
+# Add one task per other processor. Because they can be executed at the same
+# time than the first task, the cost is zero.
+    for i in xrange(self.n_processors-1) :
+      pos = -1
+      counter = 0
+      for task in self.tasks_ready :
+        if task.subdomain_id not in used_procs :
+          if pos==-1 :
+            pos = counter
+          elif task.dfds_level>self.tasks_ready[pos].dfds_level :
+            pos = counter
+        counter += 1
+      
+      if pos!=-1 :
+        self.tasks_done.add(self.tasks_ready[pos])
+        used_procs.add(self.tasks_ready[pos].subdomain_id)
+        current_level.append(self.tasks_ready.pop(pos))
+
+    return current_level
+
+#----------------------------------------------------------------------------#
+
   def solve(self) :
     """Solve the SOP"""
 
@@ -136,6 +172,8 @@ class Graph_sweeps(object) :
         current_level = self.use_mpw()
       elif self.method=='MTW' :
         current_level = self.use_mtw()
+      elif self.method=='DFDS' :
+        current_level = self.use_dfds()
       else :
         raise NotImplementedError
       self.graph.append(current_level)

@@ -50,6 +50,8 @@ class Task(object) :
 
     self.total_waiting_tasks = set()
     self.total_waiting_processors = set()
+    self.total_waiting_processors.add(self.subdomain_id)
+    tmp_b_level = 0
     for task in tasks :
       if task in self.waiting_tasks :
         self.total_waiting_tasks.add(task)
@@ -58,6 +60,25 @@ class Task(object) :
         self.total_waiting_processors.add(task.subdomain_id)
         for tmp in task.total_waiting_processors :
           self.total_waiting_processors.add(tmp)
+        if tmp_b_level<task.b_level :
+          tmp_b_level = task.b_level
 
+    self.b_level = tmp_b_level+1
     self.n_total_waiting_tasks = len(self.total_waiting_tasks)
-    self.n_total_waiting_processors = len(self.total_waiting_processors)
+    self.n_total_waiting_processors = len(self.total_waiting_processors)-1
+
+#----------------------------------------------------------------------------#
+
+  def set_dfds_level(self,tasks,max_b_level) :
+    """Set the level priorities for DFDS heuristic."""
+
+    tmp_dfds_level = 0
+    if self.n_total_waiting_processors!=0 :
+      for task in tasks :
+        if task in self.waiting_tasks :
+          if task.subdomain_id!=self.subdomain_id :
+            if tmp_dfds_level<task.b_level+max_b_level :
+              tmp_dfds_level = task.b_level+max_b_level
+          else :
+            if tmp_dfds_level<task.dfds_level-1 :
+              tmp_dfds_level = task.dfds_level-1
