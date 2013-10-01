@@ -185,6 +185,7 @@ class Graph_sweeps(object) :
           for required_task in task.required_tasks :
             if required_task not in self.tasks_done :
               ready = False
+              break
           if ready==True :
             if task not in self.tasks_ready :
               self.tasks_ready.append(task)
