@@ -9,6 +9,7 @@
 associated to the tasks. Then, looks to solve the sequential ordering
 problem (SOP)."""
 
+import Branch_and_bound
 import Graph_sweeps
 import Task
 
@@ -49,10 +50,8 @@ file_names = ['0.txt','1.txt','2.txt']
 #   - MTW: most tasks waiting
 #   - MPW: most processors waiting
 #   - DFDS: depth-first descendant-seeking
-#   - Rajouter branch-and-bound: besoin de 2 bounds. Min bound: utiliser
-#   Michael's bound ou, plus simple, plus grand nombres de cells sur un
-#   processeur. Max bound: nombre de cells restantes.
-methods = ['FIFO','MTW','MPW','DFDS']
+#   - BB: branch-and-bound
+methods = ['FIFO','MTW','MPW','DFDS','BB']
 method = methods[0]
 
 # Read the input files
@@ -104,6 +103,9 @@ if method=='DFDS' :
       max_b_level = task.b_level
   compute_downstream_tasks(tasks,n_dir,max_b_level)
 
-graph_sweeps = Graph_sweeps.Graph_sweeps(tasks,method,len(file_names))
+if method!='BB' :
+  graph_sweeps = Graph_sweeps.Graph_sweeps(tasks,method,len(file_names))
+else :
+  graph_sweeps = Branch_and_bound.Branch_and_bound(tasks,len(file_names))
 graph_sweeps.solve()
 graph_sweeps.output_results('output_'+method.lower())

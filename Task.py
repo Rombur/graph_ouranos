@@ -82,3 +82,4 @@ class Task(object) :
           else :
             if tmp_dfds_level<task.dfds_level-1 :
               tmp_dfds_level = task.dfds_level-1
+    self.dfds_level = tmp_dfds_level          
