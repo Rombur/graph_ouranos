@@ -122,16 +122,22 @@ class Branch_and_bound(object) :
 
     subdomains_list = range(0,self.n_processors)
     done = False
+    depth_first = True
     while not done :
       lowest_bound = 2*len(self.tasks)
-# Depth-first search
       n_tasks_done = 0
       pos = 0
       counter = 0
       for node in self.nodes :
-        if n_tasks_done<len(node.tasks_done) :
-          pos = counter
-          n_tasks_done = len(node.tasks_done)
+        if depth_first==True :
+# Depth-first search
+          if n_tasks_done<len(node.tasks_done) :
+            pos = counter
+            n_tasks_done = len(node.tasks_done)
+        else :
+# Best-first search
+          if node.min_bound<lowest_bound :
+            pos = counter
         if node.min_bound<lowest_bound :
           lowest_bound = node.min_bound
         counter += 1
@@ -157,12 +163,14 @@ class Branch_and_bound(object) :
           min_max_bound = node.max_bound
       self.nodes = [node for node in self.nodes if node.min_bound<=min_max_bound]
 
-      done = True
+      done = False
       for node in self.nodes :
-        if node.cost==lowest_bound :
-          done = True
-          self.nodes[0] = node
-          break
+        if len(node.tasks_ready)==0 :
+          depth_first = False
+          if node.cost==lowest_bound :
+            done = True
+            self.nodes[0] = node
+            break
 
 #----------------------------------------------------------------------------#
 

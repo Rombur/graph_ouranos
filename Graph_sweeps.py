@@ -46,7 +46,7 @@ class Graph_sweeps(object) :
     """Use MPW (most processors waiting) method to determine the next task."""
 
     used_procs = set()
-# Execute the task with the most task waiting for it.
+# Execute the task with the most tasks waiting for it.
     pos = 0
     counter = 0
     for task in self.tasks_ready :
