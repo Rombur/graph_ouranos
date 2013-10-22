@@ -43,16 +43,30 @@ def compute_downstream_tasks(tasks,n_dir,max_b_level=None) :
               tasks_ready.append(task)
 
 # Input files
-file_names = ['0.txt','1.txt','2.txt']
+file_names = ['0.txt','1.txt','2.txt','3.txt','4.txt']
 
-# Method use to to solve the SOP problem:
+# Method use to to solve the SOP problem (all these methods are depth-first
+# because the cost other methods would be too important for real applications):
 #   - FIFO: first-in first-out
 #   - MTW: most tasks waiting
 #   - MPW: most processors waiting
 #   - DFDS: depth-first descendant-seeking
-#   - BB: branch-and-bound
-methods = ['FIFO','MTW','MPW','DFDS','BB']
-method = methods[0]
+#   - BBMP: branch-and-bound most-processors (try to have as many processors
+#     running as possible)
+#   - BBMPMW: branch-and-bound most-processors most-waiting (similar than BBMP
+#     but in case of tie the node with the most waiting tasks is chosen)
+#   - BBMPMB: branch-and-bound most-processors most-blocking (similar than BBMP
+#     but in case of tie the node with the most blocking task is chosen)
+#   - BBMWMP: branch-and-bound most-waiting most-processors (look for the node
+#     with the most waiting task and in case of tie use the node that
+#     requires the most processors)
+#   - BBMBMP: branch-and-bound most-blocking most-processors (lookd the node
+#     with the most blocking task and in case of tie use the node that
+#     requires the most processors)
+# All the BB methods try to use keep to work on the same directions. It is
+# only when it is not possible that the other criteria are active.
+methods = ['FIFO','MTW','MPW','DFDS','BBMP','BBMPMW','BBMPMB','BBMWMP','BBMBMP']
+method = methods[8]
 
 # Read the input files
 tasks = []
@@ -103,9 +117,9 @@ if method=='DFDS' :
       max_b_level = task.b_level
   compute_downstream_tasks(tasks,n_dir,max_b_level)
 
-if method!='BB' :
+if method in methods[0:4] :
   graph_sweeps = Graph_sweeps.Graph_sweeps(tasks,method,len(file_names))
 else :
-  graph_sweeps = Branch_and_bound.Branch_and_bound(tasks,len(file_names))
+  graph_sweeps = Branch_and_bound.Branch_and_bound(tasks,method,len(file_names))
 graph_sweeps.solve()
 graph_sweeps.output_results('output_'+method.lower())

@@ -32,12 +32,14 @@ class Node(object) :
 class Branch_and_bound(object) :
   """Class solving the SOP using branch-and-bound algorithm."""
 
-  def __init__(self,tasks,n_processors) :
+  def __init__(self,tasks,method,n_processors) :
 
     super(Branch_and_bound,self).__init__()
     self.tasks = tasks
     self.n_tasks = len(tasks)
+    self.method = method
     self.n_processors = n_processors
+    self.current_directions = []
 
 #----------------------------------------------------------------------------#
 
@@ -122,18 +124,104 @@ class Branch_and_bound(object) :
 
     subdomains_list = range(0,self.n_processors)
     done = False
-    depth_first = True
+    best_first = False
     while not done :
       lowest_bound = 2*len(self.tasks)
       n_tasks_done = 0
       pos = 0
       counter = 0
+      max_continuation_number = 0
+      continuation_list = []
+      continuation_set = set()
+      max_most_waiting_number = 0
+      most_waiting_list = []
+      max_most_blocking_number = 0
+      most_blocking_list = []
+# When a processor is working on a direction, we would like that it keeps
+# working on that direction similar to what happens on the regular case.
       for node in self.nodes :
-        if depth_first==True :
-# Depth-first search
-          if n_tasks_done<len(node.tasks_done) :
-            pos = counter
-            n_tasks_done = len(node.tasks_done)
+        continuation_number = 0
+        most_waiting_number = 0
+        most_blocking_number = 0
+        if len(node.graph)!=0 :
+          for task in node.graph[-1] :
+            tmp = (task.subdomain_id,task.idir)
+            if tmp in continuation_set :
+              continuation_number += 1
+            most_waiting_number += task.n_total_waiting_tasks
+            if task.n_total_waiting_tasks>most_blocking_number :
+              most_blocking_number = task.n_total_waiting_tasks
+          if continuation_number>max_continuation_number :
+            max_continuation_number = continuation_number
+        continuation_list.append(continuation_number)  
+        most_waiting_list.append(most_waiting_number)
+        most_blocking_list.append(most_blocking_number)
+
+      max_level = 0
+      for node in self.nodes :
+        if best_first==False :
+          if continuation_list[counter]==max_continuation_number :
+# Most-processors search
+            if self.method=='BBMP' :
+              if n_tasks_done<len(node.tasks_done) :
+                pos = counter
+                n_tasks_done = len(node.tasks_done)
+# Most-processors most-waiting search
+            elif self.method=='BBMPMW' :
+              if n_tasks_done<len(node.tasks_done) :
+                pos = counter
+                n_tasks_done = len(node.tasks_done)
+                max_most_waiting_number = most_waiting_list[counter]
+              elif n_tasks_done==len(node.tasks_done) :
+                if most_waiting_list[counter]>max_most_waiting_number :
+                  pos = counter
+                  max_most_waiting_number = most_waiting_list[counter]
+# Most-processors most-blocking search
+            elif self.method=='BBMPMB' :
+              if n_tasks_done<len(node.tasks_done) :
+                pos = counter
+                n_tasks_done = len(node.tasks_done)
+                max_most_blocking_number = most_blocking_list[counter]
+              elif n_tasks_done==len(node.tasks_done) :
+                if most_blocking_list[counter]>max_most_blocking_number :
+                  pos = counter
+                  max_most_blocking_number = most_blocking_list[counter]
+# Most-waiting most-processors search
+            elif self.method=='BBMWMP' :
+              # Force depth-first
+              if len(node.graph)>max_level :
+                max_level = len(node.graph)
+                pos = counter
+                n_tasks_done = len(node.tasks_done)
+                max_most_waiting_number = most_waiting_list[counter]
+              elif len(node.graph)==max_level :
+                if max_most_waiting_number<most_waiting_list[counter] :
+                  pos = counter
+                  n_tasks_done = len(node.tasks_done)
+                  max_most_waiting_number = most_waiting_list[counter]
+                elif max_most_waiting_number==most_waiting_list[counter] :
+                  if n_tasks_done<len(node.tasks_done) :
+                    pos = counter
+                    n_tasks_done = len(node.tasks_done)
+# Most-blocking most-processors search
+            elif self.method=='BBMBMP' :
+              # Force depth-first
+              if len(node.graph)>max_level :
+                max_level = len(node.graph)
+                pos = counter
+                n_tasks_done = len(node.tasks_done)
+                max_most_blocking_number = most_blocking_list[counter]
+              elif len(node.graph)==max_level :
+                if max_most_blocking_number<most_blocking_list[counter] :
+                  pos = counter
+                  n_tasks_done = len(node.tasks_done)
+                  max_most_blocking_number = most_blocking_list[counter]
+                elif max_most_blocking_number==most_blocking_list[counter] :
+                  if n_tasks_done<len(node.tasks_done) :
+                    pos = counter
+                    n_tasks_done = len(node.tasks_done)
+            else :
+              raise NotImplementedError
         else :
 # Best-first search
           if node.min_bound<lowest_bound :
@@ -141,7 +229,7 @@ class Branch_and_bound(object) :
         if node.min_bound<lowest_bound :
           lowest_bound = node.min_bound
         counter += 1
-
+  
       for i in xrange(1,self.n_processors+1) :
 # itertools create a generator, i.e., a list of iterators that can be used only
 # once. If we want to reuse the list, we need to recall itertools
@@ -151,6 +239,12 @@ class Branch_and_bound(object) :
           for used_tasks in task_comb :
             node = self.create_node(used_procs,used_tasks,self.nodes[pos])
             self.nodes.append(node)
+
+# Store the direction-processor pairs. The very first graph is empty and needs
+# to be skipped
+      if len(self.nodes[pos].graph)!=0 :
+        for task in self.nodes[pos].graph[-1] :
+          continuation_set.add((task.subdomain_id,task.idir))
 
 # Every possible children from the nodes was created, thus the node itself can
 # be deleted.
@@ -164,13 +258,24 @@ class Branch_and_bound(object) :
       self.nodes = [node for node in self.nodes if node.min_bound<=min_max_bound]
 
       done = False
+      tmp_node = []
       for node in self.nodes :
         if len(node.tasks_ready)==0 :
-          depth_first = False
-          if node.cost==lowest_bound :
+# If a solution has been found, switch to best-first algorithm
+          best_first = True
+# Stop if the solution is within 10% of the lowest bound
+          if node.cost<=1.1*lowest_bound :
             done = True
             self.nodes[0] = node
             break
+# Print the temporary solution
+          else :
+            if tmp_node is not node :
+              print 'Output intermediate result because BB did not converge.'
+              print 'Node cost: ',node.cost
+              print 'Target: ',1.1*lowest_bound
+              self.output_intermediate_results(node)
+              tmp_node = node
 
 #----------------------------------------------------------------------------#
 
@@ -186,3 +291,24 @@ class Branch_and_bound(object) :
         file.write('Id: '+str(task.ID)+'\n')
       file.write('\n')
     file.close()  
+
+#----------------------------------------------------------------------------#
+
+  def output_intermediate_results(self,node) :
+    """Output intermediate results when Branch-and-Bound does not converge."""
+
+    if self.intermediate_cost not in globals() :
+      self.intermediate_cost = 2*len(self.tasks)
+      self.intermediate_number = 0
+
+    if self.intermediate_cost<node.cost :
+      file = open('output_intermediate_'+str(self.intermediate_number)+'.txt','w')
+      file.write('Minimum cost: '+str(node.cost)+'\n\n')
+      for level in node.graph :
+        file.write('-------------\n')
+        for task in level :
+          file.write('subdomain_id: '+str(task.subdomain_id)+'\n')
+          file.write('Id: '+str(task.ID)+'\n')
+        file.write('\n')
+      file.close()  
+      self.intermediate_number += 1
