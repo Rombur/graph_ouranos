@@ -45,7 +45,7 @@ def compute_downstream_tasks(tasks,n_dir,max_b_level=None) :
 # Input files
 file_names = ['0.txt','1.txt','2.txt','3.txt','4.txt']
 
-# Method use to to solve the SOP problem (all these methods are depth-first
+# Methods used to solve the SOP problem (all these methods are depth-first
 # because the cost other methods would be too important for real applications):
 #   - FIFO: first-in first-out
 #   - MTW: most tasks waiting
@@ -60,10 +60,10 @@ file_names = ['0.txt','1.txt','2.txt','3.txt','4.txt']
 #   - BBMWMP: branch-and-bound most-waiting most-processors (look for the node
 #     with the most waiting task and in case of tie use the node that
 #     requires the most processors)
-#   - BBMBMP: branch-and-bound most-blocking most-processors (lookd the node
+#   - BBMBMP: branch-and-bound most-blocking most-processors (look for the node
 #     with the most blocking task and in case of tie use the node that
 #     requires the most processors)
-# All the BB methods try to use keep to work on the same directions. It is
+# All the BB methods try to use keep to work on the same direction. It is
 # only when it is not possible that the other criteria are active.
 methods = ['FIFO','MTW','MPW','DFDS','BBMP','BBMPMW','BBMPMB','BBMWMP','BBMBMP']
 method = methods[8]

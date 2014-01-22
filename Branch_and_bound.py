@@ -105,7 +105,7 @@ class Branch_and_bound(object) :
   def solve(self) :
     """Solve the SOP using branch-and-bound algorithm."""
 
-# Create the firt node
+# Create the first node
     self.nodes = []
     graph = []
     tasks_done = set()
@@ -125,6 +125,7 @@ class Branch_and_bound(object) :
     subdomains_list = range(0,self.n_processors)
     done = False
     best_first = False
+    continuation_set = set()
     while not done :
       lowest_bound = 2*len(self.tasks)
       n_tasks_done = 0
@@ -132,13 +133,14 @@ class Branch_and_bound(object) :
       counter = 0
       max_continuation_number = 0
       continuation_list = []
-      continuation_set = set()
       max_most_waiting_number = 0
       most_waiting_list = []
       max_most_blocking_number = 0
       most_blocking_list = []
 # When a processor is working on a direction, we would like that it keeps
-# working on that direction similar to what happens on the regular case.
+# working on that direction similar to what happens on the regular case. This
+# operation also favors the nodes that use at least as many processors as
+# their parent.
       for node in self.nodes :
         continuation_number = 0
         most_waiting_number = 0
@@ -242,11 +244,12 @@ class Branch_and_bound(object) :
 
 # Store the direction-processor pairs. The very first graph is empty and needs
 # to be skipped
+      continuation_set = set();
       if len(self.nodes[pos].graph)!=0 :
         for task in self.nodes[pos].graph[-1] :
           continuation_set.add((task.subdomain_id,task.idir))
 
-# Every possible children from the nodes was created, thus the node itself can
+# Every possible children from the node was created, thus the node itself can
 # be deleted.
       if self.nodes[pos].cost!=self.nodes[pos].min_bound :
         self.nodes.pop(pos)
